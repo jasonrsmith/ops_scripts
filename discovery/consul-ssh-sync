@@ -1,0 +1,24 @@
+#!/bin/bash
+
+DC=$1
+HOST=$2
+SSH_PARAMS=$3
+SESSION_NAME="TMUX_${HOST}"
+
+tmux has-session -t ${SESSION_NAME}
+
+if [ $? != 0 ]; then
+	window=1
+	tmux new-session -s ${SESSION_NAME} -n ${HOST} -d
+	for i in `consul-list --dc $DC -H $HOST -o Node` ; do
+		tmux new-window -n ${HOST} -t $SESSION_NAME "ssh ${SSH_PARAMS} $i"
+		tmux join-pane -t 1
+		tmux setw synchronize-panes
+		tmux select-layout even-vertical
+		window=$((window+1))
+	done
+	tmux kill-window -t ${SESSION_NAME}:0
+	tmux select-window -t ${SESSION_NAME}:1
+fi
+
+tmux attach -t ${SESSION_NAME}
